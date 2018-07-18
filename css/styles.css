@@ -123,27 +123,26 @@ nav h1 a {
   height: 50px;
   width: 100%;
   border-radius: 20px 0px 0px;
+  display: flex;
+    align-items: center;
+    justify-content: space-around;
 }
 
 #reviewHead p {
   display: inline-block;
   margin: 0 !important;
   padding: 0 !important;
-  vertical-align: middle;
-  position: relative;
 }
 
 #reviewHead :nth-child(1) {
   font-size: xx-large;
   color: whitesmoke;
-  left: 5%;
   font-size: 2.25em;
 }
 
 #reviewHead :nth-child(2) {
   color: lightgray;
   font-size: large;
-  left: 25%;
   font-size: 1.2rem;
 }
 
