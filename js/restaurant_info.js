@@ -131,7 +131,7 @@ fillRestaurantHoursHTML = (operatingHours = self.restaurant.operating_hours) => 
  */
 fillReviewsHTML = (reviews = self.restaurant.reviews) => {
   const container = document.getElementById('reviews-container');
-  const title = document.createElement('h2');
+  const title = document.createElement('h3');
   title.innerHTML = 'Reviews';
   container.appendChild(title);
 
@@ -155,7 +155,7 @@ createReviewHTML = (review) => {
   const li = document.createElement('li');
 
   const reviewHead = document.createElement('div');
-  reviewHead.id = "reviewHead";
+  reviewHead.classList.add("reviewHead");
 
   const name = document.createElement('p');
   name.innerHTML = review.name;
@@ -168,10 +168,10 @@ createReviewHTML = (review) => {
   li.appendChild(reviewHead);
   
   const reviewBody = document.createElement('div');
-  reviewBody.id = "reviewBody";
+  reviewBody.classList.add("reviewBody");
 
   const reviewRating = document.createElement('div');
-  reviewRating.id = "reviewRating";
+  reviewRating.classList.add("reviewRating");
 
   const rating = document.createElement('p');
   rating.innerHTML = `Rating: ${review.rating}`;

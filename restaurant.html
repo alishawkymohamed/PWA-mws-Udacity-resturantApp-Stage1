@@ -5,7 +5,7 @@
   <!-- Normalize.css for better cross-browser consistency -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" src="//normalize-css.googlecode.com/svn/trunk/normalize.css" />
+  <!-- <link rel="stylesheet" href="//normalize-css.googlecode.com/svn/trunk/normalize.css" /> -->
   <!-- Main CSS file -->
   <link rel="icon" sizes="32x32" href="img/static/icon.png">
   <link rel="stylesheet" href="css/styles.css" type="text/css">
@@ -68,8 +68,19 @@
   <script type="text/javascript" src="js/restaurant_info.js"></script>
   <!-- Google Maps -->
  <!--  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA_tKbW6A5pQ-eupxI56myUnHLqYCzOjKo&libraries=places&callback=initMap"></script> -->
-  <!-- End scripts -->
-
+ <script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('service-worker.js').then(function (registration) {
+        console.log('ServiceWorker registred successfully with scope: ', registration.scope);
+      }, function (err) {
+        console.log('ServiceWorker registration failed: ', err);
+      });
+    });
+  }
+</script> 
+ <!-- End scripts -->
+ 
 </body>
 
 </html>
