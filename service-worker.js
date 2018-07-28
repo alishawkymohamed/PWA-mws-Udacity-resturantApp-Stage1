@@ -1,25 +1,18 @@
+if (typeof idb === "undefined") {
+  self.importScripts('./js/idb/idb.js');
+}
 const staticCacheName = 'restaurant-cache-v1';
 const cacheUrls = [
-    '/',
-    '/index.html',
-    '/restaurant.html',
-    '/css/styles.css',
-    '/js/dbhelper.js',
-    '/js/main.js',
-    '/js/restaurant_info.js',
-    '/data/restaurants.json',
-    '/img/static/offline_img1.png',
-    '/img/1.jpg',
-    '/img/2.jpg',
-    '/img/3.jpg',
-    '/img/4.jpg',
-    '/img/5.jpg',
-    '/img/6.jpg',
-    '/img/7.jpg',
-    '/img/8.jpg',
-    '/img/9.jpg',
-    '/img/10.jpg',
-  ];
+  '/',
+  '/index.html',
+  '/restaurant.html',
+  '/css/styles.css',
+  '/js/dbhelper.js',
+  '/js/main.js',
+  '/js/restaurant_info.js',
+  '/img/static/offline_img1.png',
+  'https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css'
+];
 
 self.addEventListener('install', event => {
   event.waitUntil(
@@ -33,25 +26,35 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('fetch', event => {
-  event.respondWith(
-    // Add cache.put to cache images on each fetch
-    caches.match(event.request).then(response => {
-      return response || fetch(event.request).then(fetchResponse => {
-        return caches.open(staticCacheName).then(cache => {
-          cache.put(event.request, fetchResponse.clone());
-          return fetchResponse;
+  // Going to request data from server
+  if (event.request.url.startsWith('http://localhost:1337')) {
+    event.respondWith(
+      fetch(event.request).then(fetchResponse => {
+        return fetchResponse;
+      })
+    )
+  }
+  else {
+    event.respondWith(
+      // Add cache.put to cache images on each fetch
+      caches.match(event.request).then(response => {
+        return response || fetch(event.request).then(fetchResponse => {
+          return caches.open(staticCacheName).then(cache => {
+            cache.put(event.request, fetchResponse.clone());
+            return fetchResponse;
+          });
         });
-      });
-    }).catch(error => {
-      if (event.request.url.includes('.jpg')) {
-        return caches.match('/img/static/offline_img1.png');
-      }
-      return new Response('Not connected to the internet', {
-        status: 404,
-        statusText: "Not connected to the internet"
-      });
-    })
-  );
+      }).catch(error => {
+        if (event.request.url.includes('.jpg')) {
+          return caches.match('/img/static/offline_img1.png');
+        }
+        return new Response('Not connected to the internet', {
+          status: 404,
+          statusText: "Not connected to the internet"
+        });
+      })
+    );
+  }
 });
 
 self.addEventListener('activate', event => {

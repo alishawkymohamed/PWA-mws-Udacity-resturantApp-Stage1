@@ -3,6 +3,14 @@
  */
 class DBHelper {
 
+  static get IdbPromise() {
+    return idb.open('restaurants-review', 1, upgradeDb => {
+      var store = upgradeDb.createObjectStore('restaurants', {
+        keyPath: 'id'
+      });
+    });
+  }
+
   /**
    * Database URL.
    * Change this to restaurants.json file location on your server.
@@ -29,16 +37,34 @@ class DBHelper {
     //   }
     // };
     // xhr.send();
-    fetch(DBHelper.DATABASE_URL)
-      .then((response) => {
-        return response.json();
-      })
-      .then((restaurants) => {
+    var idbPromise = DBHelper.IdbPromise;
+
+    idbPromise.then(db => {
+      return db.transaction('restaurants')
+        .objectStore('restaurants').getAll();
+    }).then(restaurants => {
+      if (restaurants && restaurants.length) {
         callback(null, restaurants);
-      })
-      .catch(error => {
-        callback(error, null);
-      });
+      }
+    }).then(() => {
+      fetch(DBHelper.DATABASE_URL)
+        .then((response) => {
+          return response.json();
+        })
+        .then((restaurants) => {
+          idbPromise.then(db => {
+            if (!db) return;
+            var store = db.transaction('restaurants', 'readwrite').objectStore('restaurants');
+            restaurants.forEach(restaurant => {
+              store.put(restaurant);
+            })
+          })
+          callback(null, restaurants);
+        })
+        .catch(error => {
+          callback(error, null);
+        });
+    })
   }
 
   /**
@@ -58,16 +84,32 @@ class DBHelper {
     //     }
     //   }
     // });
-    fetch(`${DBHelper.DATABASE_URL}/${id}`)
-      .then((response) => {
-        return response.json();
-      })
-      .then((restaurant) => {
+    var idbPromise = DBHelper.IdbPromise;
+
+    idbPromise.then(db => {
+      return db.transaction('restaurants')
+        .objectStore('restaurants').get(+id);
+    }).then(restaurant => {
+      if (!restaurant) {
+        fetch(`${DBHelper.DATABASE_URL}/${id}`)
+          .then((response) => {
+            return response.json();
+          })
+          .then((responseRestaurant) => {
+            callback(null, responseRestaurant);
+            idbPromise.then(db => {
+              var store = db.transaction('restaurants', 'readwrite').objectStore('restaurants');
+              store.put(responseRestaurant);
+            })
+          })
+          .catch(error => {
+            callback(error, null);
+          });
+      }
+      else {
         callback(null, restaurant);
-      })
-      .catch(error => {
-        callback(error, null);
-      });
+      }
+    });
   }
 
   /**
