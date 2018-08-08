@@ -1,27 +1,31 @@
-if (typeof idb === "undefined") {
-  self.importScripts('./js/idb/idb.js');
-}
+// if (typeof idb === "undefined") {
+//   self.importScripts('./js/idb/idb.js');
+// }
 const staticCacheName = 'restaurant-cache-v1';
 const cacheUrls = [
   '/',
   '/index.html',
+  '/reviews.html',
   '/restaurant.html',
   '/css/styles.css',
   '/js/dbhelper.js',
   '/js/main.js',
+  '/js/reviews.js',
+  '/js/idb/idb.js',
   '/js/restaurant_info.js',
   '/img/static/offline_img1.png',
-  'https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css'
+  '/font-awesome.min.css',
+  '/normalize.min.css'
 ];
 
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(staticCacheName)
-      .then(cache => {
-        return cache.addAll(cacheUrls).catch(error => {
-          console.log('Caches open failed: ' + error);
-        });
-      })
+    .then(cache => {
+      return cache.addAll(cacheUrls).catch(error => {
+        console.log('Caches open failed: ' + error);
+      });
+    })
   );
 });
 
@@ -33,14 +37,17 @@ self.addEventListener('fetch', event => {
         return fetchResponse;
       })
     )
-  }
-  else {
+  } else {
     event.respondWith(
       // Add cache.put to cache images on each fetch
       caches.match(event.request).then(response => {
         return response || fetch(event.request).then(fetchResponse => {
           return caches.open(staticCacheName).then(cache => {
-            cache.put(event.request, fetchResponse.clone());
+            cacheUrls.forEach((value) => {
+              if (!event.request.url.startsWith('https://api.tiles.mapbox.com')) {
+                cache.put(event.request, fetchResponse.clone());
+              }
+            })
             return fetchResponse;
           });
         });

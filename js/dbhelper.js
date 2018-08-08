@@ -5,9 +5,12 @@ class DBHelper {
 
   static get IdbPromise() {
     return idb.open('restaurants-review', 1, upgradeDb => {
-      var store = upgradeDb.createObjectStore('restaurants', {
+      let store = upgradeDb.createObjectStore('restaurants', {
         keyPath: 'id'
       });
+      let reviewStore = upgradeDb.createObjectStore('reviews', {
+        keyPath: 'id'
+      }).createIndex('restaurant_id', 'restaurant_id');
     });
   }
 
@@ -18,6 +21,11 @@ class DBHelper {
   static get DATABASE_URL() {
     const port = 1337; // Change this to your server port
     return `http://localhost:${port}/restaurants`;
+  }
+
+  static get DATABASE_URL_REVIEWS() {
+    const port = 1337; // Change this to your server port
+    return `http://localhost:${port}/reviews/?restaurant_id=`;
   }
 
   /**
@@ -37,7 +45,7 @@ class DBHelper {
     //   }
     // };
     // xhr.send();
-    var idbPromise = DBHelper.IdbPromise;
+    let idbPromise = DBHelper.IdbPromise;
 
     idbPromise.then(db => {
       return db.transaction('restaurants')
@@ -54,7 +62,7 @@ class DBHelper {
         .then((restaurants) => {
           idbPromise.then(db => {
             if (!db) return;
-            var store = db.transaction('restaurants', 'readwrite').objectStore('restaurants');
+            let store = db.transaction('restaurants', 'readwrite').objectStore('restaurants');
             restaurants.forEach(restaurant => {
               store.put(restaurant);
             })
@@ -84,7 +92,7 @@ class DBHelper {
     //     }
     //   }
     // });
-    var idbPromise = DBHelper.IdbPromise;
+    let idbPromise = DBHelper.IdbPromise;
 
     idbPromise.then(db => {
       return db.transaction('restaurants')
@@ -96,18 +104,64 @@ class DBHelper {
             return response.json();
           })
           .then((responseRestaurant) => {
-            callback(null, responseRestaurant);
             idbPromise.then(db => {
-              var store = db.transaction('restaurants', 'readwrite').objectStore('restaurants');
+              let store = db.transaction('restaurants', 'readwrite').objectStore('restaurants');
               store.put(responseRestaurant);
             })
+            idbPromise.then(db => {
+                let restaurant_idIndex = db.transaction('reviews').objectStore('reviews').index('restaurant_id');
+                return restaurant_idIndex.getAll(+id);
+              })
+              .then(restaurantReviews => {
+                if (restaurantReviews && restaurantReviews.length) {
+                  responseRestaurant.reviews = restaurantReviews;
+                  callback(null, responseRestaurant);
+                } else {
+                  fetch(`${DBHelper.DATABASE_URL_REVIEWS}${id}`)
+                    .then((reviews) => {
+                      return reviews.json();
+                    })
+                    .then((rReviews) => {
+                      responseRestaurant.reviews = rReviews;
+                      callback(null, responseRestaurant);
+                      idbPromise.then(db => {
+                        let reviewsStore = db.transaction('reviews', 'readwrite').objectStore('reviews');
+                        rReviews.forEach(r => {
+                          reviewsStore.put(r);
+                        })
+                      });
+                    })
+                }
+              })
           })
           .catch(error => {
             callback(error, null);
           });
-      }
-      else {
-        callback(null, restaurant);
+      } else {
+        idbPromise.then(db => {
+          let restaurant_idIndex = db.transaction('reviews').objectStore('reviews').index('restaurant_id');
+          return restaurant_idIndex.getAll(+id);
+        }).then((restaurantReviews) => {
+          if (restaurantReviews && restaurantReviews.length) {
+            restaurant.reviews = restaurantReviews;
+            callback(null, restaurant);
+          } else {
+            fetch(`http://localhost:1337/reviews/?restaurant_id=${id}`)
+              .then((reviews) => {
+                return reviews.json();
+              })
+              .then((rReviews) => {
+                restaurant.reviews = rReviews;
+                callback(null, restaurant);
+                idbPromise.then(db => {
+                  let reviewsStore = db.transaction('reviews', 'readwrite').objectStore('reviews');
+                  rReviews.forEach(r => {
+                    reviewsStore.put(r);
+                  })
+                })
+              })
+          }
+        })
       }
     });
   }
@@ -234,12 +288,11 @@ class DBHelper {
    */
   static mapMarkerForRestaurant(restaurant, map) {
     // https://leafletjs.com/reference-1.3.0.html#marker  
-    const marker = new L.marker([restaurant.latlng.lat, restaurant.latlng.lng],
-      {
-        title: restaurant.name,
-        alt: restaurant.name,
-        url: DBHelper.urlForRestaurant(restaurant)
-      })
+    const marker = new L.marker([restaurant.latlng.lat, restaurant.latlng.lng], {
+      title: restaurant.name,
+      alt: restaurant.name,
+      url: DBHelper.urlForRestaurant(restaurant)
+    })
     marker.addTo(newMap);
     return marker;
   }
@@ -256,3 +309,53 @@ class DBHelper {
 
 }
 
+(function () {
+  window.addEventListener("load", (event) => {
+    function handleNetworkChange(event) {
+      if (navigator.onLine) {
+        let x = document.getElementById("snackbar");
+        x.innerHTML = "You are Now Online"
+        x.className = "show";
+        setTimeout(function () {
+          x.className = x.className.replace("show", "");
+        }, 3000);
+
+        let offlineReviews = JSON.parse(localStorage.getItem('offlineReviews'));
+        if (!offlineReviews || offlineReviews.length == 0) {
+          return;
+        } else {
+
+          let promises = [];
+
+          offlineReviews.forEach(review => {
+            promises.push(
+              fetch('http://localhost:1337/reviews', {
+                method: 'post',
+                body: JSON.stringify(review)
+              }).then(function (response) {
+                return response.json();
+              }).then(function (data) {
+                console.log(data);
+              })
+            )
+          })
+
+
+          Promise.all(promises).then(() =>
+            localStorage.removeItem('offlineReviews')
+          );
+        }
+
+      } else {
+        let x = document.getElementById("snackbar");
+        x.innerHTML = "You are Now Offline"
+        x.className = "show";
+        setTimeout(function () {
+          x.className = x.className.replace("show", "");
+        }, 3000);
+      }
+    }
+    window.addEventListener("online", handleNetworkChange);
+    window.addEventListener("offline", handleNetworkChange);
+  });
+})();
